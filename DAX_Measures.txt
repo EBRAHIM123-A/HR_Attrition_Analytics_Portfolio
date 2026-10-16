@@ -1,0 +1,85 @@
+HR ATTRITION ANALYTICS — DAX MEASURES
+Table name in model: CleanedData (loaded from 02_Cleaned_Data)
+All measures below are also documented, with the reasoning, in 09_Power_BI_Measures inside the Excel workbook.
+
+------------------------------------------------------------
+CORE KPIs
+------------------------------------------------------------
+
+Total Employees =
+COUNTROWS(CleanedData)
+
+Attrition Count =
+CALCULATE([Total Employees], CleanedData[Attrition] = "Yes")
+
+Attrition Rate =
+DIVIDE([Attrition Count], [Total Employees], 0)
+
+Average Monthly Income =
+AVERAGE(CleanedData[MonthlyIncome])
+
+Average Age =
+AVERAGE(CleanedData[Age])
+
+Avg Years At Company =
+AVERAGE(CleanedData[YearsAtCompany])
+
+------------------------------------------------------------
+CONTEXT-LOCKED MEASURES (used for comparison charts)
+------------------------------------------------------------
+
+Attrition Rate (OT) =
+CALCULATE(
+    [Attrition Rate],
+    ALLEXCEPT(CleanedData, CleanedData[OverTime])
+)
+
+Attrition Rate (Department) =
+CALCULATE(
+    [Attrition Rate],
+    ALLEXCEPT(CleanedData, CleanedData[Department])
+)
+
+Attrition Rate (Job Role) =
+CALCULATE(
+    [Attrition Rate],
+    ALLEXCEPT(CleanedData, CleanedData[JobRole])
+)
+
+------------------------------------------------------------
+SEGMENT / RISK MEASURES
+------------------------------------------------------------
+
+High Risk Rate (Single + Overtime) =
+CALCULATE(
+    [Attrition Rate],
+    CleanedData[OverTime] = "Yes",
+    CleanedData[MaritalStatus] = "Single"
+)
+
+Attrition Rate (Tenure 0-2y) =
+CALCULATE(
+    [Attrition Rate],
+    CleanedData[YearsAtCompany] <= 2
+)
+
+Dept Rank by Attrition =
+RANKX(
+    ALL(CleanedData[Department]),
+    [Attrition Rate],
+    ,
+    DESC
+)
+
+------------------------------------------------------------
+NOTES
+------------------------------------------------------------
+- Attrition Rate is the anchor measure for the whole model. Every comparison chart
+  (by department, job role, overtime, tenure band) reuses it with a different filter context —
+  this keeps the definition consistent everywhere instead of writing one-off percentage formulas per chart.
+- ALLEXCEPT is used instead of ALL so that any page-level slicer (e.g. a date/attrition slicer added later)
+  still applies, while the specific dimension being charted (Department, JobRole, OverTime) is not
+  double-filtered by itself.
+- AttritionFlag (0/1 column) is not required for these measures since CALCULATE + COUNTROWS with a filter
+  on the text column Attrition = "Yes" achieves the same result and is easier to audit visually.
+  AttritionFlag is kept in the model for SQL/Python parity and for anyone who prefers SUM(AttritionFlag)/COUNTROWS.
